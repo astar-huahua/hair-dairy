@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#2f6fed">
+<title>发量日记</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f6f7fb; color: #222; display: flex; justify-content: center;
+    min-height: 100vh; padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+  }
+  .app { width: 100%; max-width: 420px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: #777; font-size: 13px; margin-bottom: 18px; }
+  .card {
+    background: #fff; border-radius: 16px; padding: 18px;
+    box-shadow: 0 4px 18px rgba(0,0,0,.06); margin-bottom: 14px;
+  }
+  label { font-size: 14px; font-weight: 600; display: block; margin-bottom: 8px; }
+  .seg { display: flex; gap: 8px; margin-bottom: 16px; }
+  .seg button {
+    flex: 1; padding: 10px; border-radius: 10px; border: 1px solid #ddd;
+    background: #fff; font-size: 15px; cursor: pointer; color: #222;
+  }
+  .seg button.active { background: #2f6fed; color: #fff; border-color: #2f6fed; }
+  input[type="number"] {
+    width: 100%; padding: 14px; font-size: 20px; border-radius: 12px;
+    border: 1px solid #ddd; outline: none;
+  }
+  input:focus { border-color: #2f6fed; }
+  .hint { font-size: 12px; color: #999; margin-top: 6px; }
+  .primary {
+    width: 100%; padding: 15px; border: none; border-radius: 12px;
+    background: #2f6fed; color: #fff; font-size: 16px; font-weight: 600;
+    cursor: pointer; margin-top: 14px;
+  }
+  .secondary {
+    width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #2f6fed;
+    background: #fff; color: #2f6fed; font-size: 14px; font-weight: 600;
+    cursor: pointer; margin-top: 10px;
+  }
+  .result-title { font-size: 15px; color: #666; margin-bottom: 10px; }
+  .badge {
+    display: inline-block; padding: 10px 16px; border-radius: 999px;
+    font-size: 18px; font-weight: 700; margin-bottom: 12px;
+  }
+  .high { background: #ffe5e5; color: #d93025; }
+  .normal { background: #e3f6e8; color: #1e8e3e; }
+  .low { background: #e5efff; color: #1a5fd0; }
+  .meta { font-size: 13px; color: #666; line-height: 1.8; }
+  .advice-btn {
+    margin-top: 14px; padding: 12px 16px; border-radius: 12px;
+    border: 1px solid #2f6fed; background: #fff; color: #2f6fed;
+    font-size: 15px; font-weight: 600; cursor: pointer; width: 100%;
+  }
+  .advice {
+    display: none; margin-top: 12px; background: #f8faff;
+    border-radius: 12px; padding: 14px; font-size: 14px; line-height: 1.8;
+  }
+  .advice.show { display: block; }
+  .advice ul { margin: 6px 0 0; padding-left: 18px; }
+  .disclaimer { font-size: 11px; color: #aaa; line-height: 1.6; margin-top: 10px; }
+  .history-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px;
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-item .date { color: #888; }
+  .empty { color: #aaa; font-size: 13px; text-align: center; padding: 12px 0; }
+  .clear-btn {
+    margin-top: 10px; background: none; border: none; color: #d93025;
+    font-size: 13px; cursor: pointer; padding: 4px 0;
+  }
+  .chart-wrap { position: relative; width: 100%; height: 180px; margin-top: 8px; }
+  canvas { width: 100%; height: 100%; display: block; }
+  .chart-legend { font-size: 12px; color: #888; margin-top: 6px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; font-size: 14px; }
+  .switch { position: relative; width: 46px; height: 26px; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; inset: 0; background: #ccc; border-radius: 999px;
+    transition: .2s; cursor: pointer;
+  }
+  .slider:before {
+    content: ""; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px;
+    background: #fff; border-radius: 50%; transition: .2s;
+  }
+  .switch input:checked + .slider { background: #2f6fed; }
+  .switch input:checked + .slider:before { transform: translateX(20px); }
+  .range-bar { height: 10px; border-radius: 999px; background: #eee; position: relative; margin: 10px 0 6px; overflow: hidden; }
+  .range-fill { position: absolute; top: 0; bottom: 0; left: 0; background: #1e8e3e; opacity: .25; }
+  .range-mark { position: absolute; top: -3px; width: 4px; height: 16px; background: #2f6fed; border-radius: 2px; }
+  .range-labels { display: flex; justify-content: space-between; font-size: 11px; color: #999; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>发量日记</h1>
+  <div class="sub">记录每天掉发量，对照平均范围看趋势</div>
+
+  <div class="card">
+    <label>你的性别</label>
+    <div class="seg" id="genderSeg">
+      <button class="active" data-gender="male">男性</button>
+      <button data-gender="female">女性</button>
+    </div>
+
+    <label>输入方式</label>
+    <div class="seg" id="unitSeg">
+      <button class="active" data-unit="strands">按根数</button>
+      <button data-unit="grams">按克数</button>
+    </div>
+
+    <label id="inputLabel">今日掉发根数</label>
+    <input type="number" id="amount" placeholder="例如 80" min="0" step="1" inputmode="decimal">
+    <div class="hint" id="unitHint">按根数记录更准确；1 克约等于 100 根，仅供参考。</div>
+
+    <div class="toggle-row">
+      <span>今天是洗头日</span>
+      <label class="switch">
+        <input type="checkbox" id="washDay">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <button class="primary" onclick="calculate()">生成结果</button>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none;">
+    <div class="result-title">今日结果</div>
+    <div id="badge" class="badge"></div>
+    <div class="meta" id="meta"></div>
+
+    <div class="range-bar">
+      <div class="range-fill" id="rangeFill"></div>
+      <div class="range-mark" id="rangeMark"></div>
+    </div>
+    <div class="range-labels" id="rangeLabels"></div>
+
+    <button class="advice-btn" onclick="toggleAdvice()">查看营养建议</button>
+    <div class="advice" id="advice"></div>
+    <div class="disclaimer">本工具仅作日常记录参考，不构成医疗诊断。若持续大量掉发或伴随头皮异常，请及时就医。</div>
+  </div>
+
+  <div class="card">
+    <div class="result-title">趋势图</div>
+    <div class="seg" id="chartSeg">
+      <button class="active" data-range="7">近 7 天</button>
+      <button data-range="30">近 30 天</button>
+    </div>
+    <div class="chart-wrap"><canvas id="chart"></canvas></div>
+    <div class="chart-legend">
+      <span><span class="legend-dot" style="background:#2f6fed"></span>每日掉发量</span>
+      <span><span class="legend-dot" style="background:#1e8e3e"></span>正常区间上限</span>
+      <span><span class="legend-dot" style="background:#d93025"></span>洗头日</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="result-title">最近记录</div>
+    <div id="history"></div>
+    <button class="clear-btn" onclick="clearHistory()">清空记录</button>
+    <button class="secondary" onclick="exportCSV()">导出 CSV 数据</button>
+  </div>
+
+  <div class="card">
+    <div class="result-title">每日提醒</div>
+    <div class="toggle-row">
+      <span>开启浏览器提醒</span>
+      <label class="switch">
+        <input type="checkbox" id="reminderToggle" onchange="toggleReminder(this.checked)">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="hint">提醒依赖浏览器通知权限，iOS 支持有限，部分浏览器关闭页面后不会提醒。</div>
+  </div>
+</div>
+
+<script>
+let gender = 'male';
+let unit = 'strands';
+let chartRange = 7;
+
+const CONFIG = {
+  male:   { total: 100000, avg: 75,  label: '男性' },
+  female: { total: 120000, avg: 100, label: '女性' }
+};
+
+const STORE_KEY = 'hair_diary_records';
+
+document.querySelectorAll('#genderSeg button').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('#genderSeg button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    gender = btn.dataset.gender;
+    renderChart();
+  };
+});
+
+document.querySelectorAll('#unitSeg button').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('#unitSeg button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    unit = btn.dataset.unit;
+    document.getElementById('inputLabel').textContent =
+      unit === 'strands' ? '今日掉发根数' : '今日掉发克数';
+    document.getElementById('unitHint').textContent =
+      unit === 'strands'
+        ? '按根数记录更准确；1 克约等于 100 根，仅供参考。'
+        : '克数为估算值，默认按 1 克 ≈ 100 根换算。';
+  };
+});
+
+document.querySelectorAll('#chartSeg button').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('#chartSeg button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    chartRange = parseInt(btn.dataset.range, 10);
+    renderChart();
+  };
+});
+
+function getAdvice(level) {
+  if (level === 'high') {
+    return `<strong>掉发量较多时，优先关注这些营养：</strong>
+      <ul>
+        <li>蛋白质：鸡蛋、鱼、瘦肉、豆制品，头发主要成分是角蛋白</li>
+        <li>铁：红肉、动物肝脏、菠菜，搭配维生素 C 促进吸收</li>
+        <li>锌：牡蛎、坚果、全谷物</li>
+        <li>维生素 D：晒太阳、蛋黄、深海鱼</li>
+        <li>避免极端节食、熬夜、高糖高油饮食</li>
+        <li>若持续 2～3 个月明显增多，建议查铁蛋白、甲状腺功能等</li>
+      </ul>`;
+  }
+  if (level === 'normal') {
+    return `<strong>正常落发量，保持均衡即可：</strong>
+      <ul>
+        <li>保证蛋白质、主食、蔬果的均衡摄入</li>
+        <li>适量坚果、深色蔬菜、豆类</li>
+        <li>规律作息，避免频繁烫染和过度牵拉头发</li>
+        <li>继续每天记录，观察长期趋势即可</li>
+      </ul>`;
+  }
+  return `<strong>落发量较少，一般无需特别进补：</strong>
+    <ul>
+      <li>不要过度节食，保证基础蛋白质和铁摄入</li>
+      <li>若伴随头发干枯、生长缓慢，可关注蛋白质、铁、锌、维生素 D</li>
+      <li>避免为了“防掉发”盲目进补或滥用保健品</li>
+      <li>继续记录观察即可</li>
+    </ul>`;
+}
+
+function loadRecords() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); }
+  catch (e) { return []; }
+}
+
+function saveRecord(rec) {
+  const records = loadRecords();
+  const today = new Date().toISOString().slice(0, 10);
+  const idx = records.findIndex(r => r.date === today);
+  if (idx >= 0) records[idx] = rec;
+  else records.unshift(rec);
+  records.sort((a, b) => b.date.localeCompare(a.date));
+  localStorage.setItem(STORE_KEY, JSON.stringify(records.slice(0, 90)));
+  renderHistory();
+  renderChart();
+}
+
+function renderHistory() {
+  const records = loadRecords();
+  const el = document.getElementById('history');
+  if (!records.length) {
+    el.innerHTML = '<div class="empty">还没有记录，今天开始吧</div>';
+    return;
+  }
+  el.innerHTML = records.slice(0, 10).map(r => `
+    <div class="history-item">
+      <span class="date">${r.date}${r.wash ? ' 🚿' : ''}</span>
+      <span>${r.display}　<b style="color:${r.color}">${r.badge}</b></span>
+    </div>
+  `).join('');
+}
+
+function clearHistory() {
+  if (confirm('确定清空所有记录吗？')) {
+    localStorage.removeItem(STORE_KEY);
+    renderHistory();
+    renderChart();
+  }
+}
+
+function calculate() {
+  const raw = parseFloat(document.getElementById('amount').value);
+  if (isNaN(raw) || raw < 0) {
+    alert('请输入有效的掉发数量');
+    return;
+  }
+
+  const c = CONFIG[gender];
+  const strands = unit === 'grams' ? raw * 100 : raw;
+  const avg = c.avg;
+  const wash = document.getElementById('washDay').checked;
+
+  let level, badgeText, badgeClass, color;
+  if (strands > avg * 1.5) {
+    level = 'high'; badgeText = '掉发量较多'; badgeClass = 'high'; color = '#d93025';
+  } else if (strands < avg * 0.5) {
+    level = 'low'; badgeText = '落发量较少'; badgeClass = 'low'; color = '#1a5fd0';
+  } else {
+    level = 'normal'; badgeText = '正常落发量'; badgeClass = 'normal'; color = '#1e8e3e';
+  }
+
+  document.getElementById('badge').textContent = badgeText;
+  document.getElementById('badge').className = 'badge ' + badgeClass;
+
+  const display = unit === 'grams'
+    ? `${raw} 克 ≈ ${Math.round(strands)} 根`
+    : `${Math.round(strands)} 根`;
+
+  document.getElementById('meta').innerHTML = `
+    今日记录：<strong>${display}</strong>${wash ? '（洗头日）' : ''}<br>
+    ${c.label}平均头发总量：约 ${c.total.toLocaleString()} 根<br>
+    ${c.label}平均每日掉发参照：约 ${avg} 根<br>
+    判断区间：少于 ${Math.round(avg * 0.5)} 根偏少，${Math.round(avg * 0.5)}～${Math.round(avg * 1.5)} 根正常，多于 ${Math.round(avg * 1.5)} 根偏多
+  `;
+
+  const lowLine = avg * 0.5;
+  const highLine = avg * 1.5;
+  const maxShow = avg * 2.5;
+  const pct = Math.min(Math.max(strands / maxShow, 0), 1) * 100;
+  document.getElementById('rangeFill').style.width = ((highLine - lowLine) / maxShow * 100) + '%';
+  document.getElementById('rangeFill').style.left = (lowLine / maxShow * 100) + '%';
+  document.getElementById('rangeMark').style.left = `calc(${pct}% - 2px)`;
+  document.getElementById('rangeLabels').innerHTML = `
+    <span>0</span><span>偏少</span><span>正常</span><span>偏多</span><span>${Math.round(maxShow)}+</span>
+  `;
+
+  const adviceEl = document.getElementById('advice');
+  adviceEl.innerHTML = getAdvice(level);
+  adviceEl.classList.remove('show');
+
+  document.getElementById('resultCard').style.display = 'block';
+
+  saveRecord({
+    date: new Date().toISOString().slice(0, 10),
+    strands: Math.round(strands),
+    display,
+    badge: badgeText,
+    color,
+    wash
+  });
+
+  document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth' });
+}
+
+function toggleAdvice() {
+  document.getElementById('advice').classList.toggle('show');
+}
+
+function renderChart() {
+  const canvas = document.getElementById('chart');
+  const wrap = canvas.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  const w = wrap.clientWidth;
+  const h = wrap.clientHeight;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  const records = loadRecords();
+  const avg = CONFIG[gender].avg;
+  const highLine = avg * 1.5;
+
+  const days = [];
+  for (let i = chartRange - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(d.toISOString().slice(0, 10));
+  }
+  const map = {};
+  records.forEach(r => { map[r.date] = r; });
+
+  const padL = 8, padR = 8, padT = 12, padB = 20;
+  const cw = w - padL - padR;
+  const ch = h - padT - padB;
+  const maxVal = Math.max(highLine * 1.2, ...days.map(d => map[d] ? map[d].strands : 0), 10);
+
+  const x = i => padL + (days.length === 1 ? cw / 2 : (i / (days.length - 1)) * cw);
+  const y = v => padT + ch - (v / maxVal) * ch;
+
+  // 正常区间上限参考线
+  ctx.strokeStyle = '#1e8e3e';
+  ctx.setLineDash([4, 4]);
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padL, y(highLine));
+  ctx.lineTo(w - padR, y(highLine));
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 折线
+  ctx.strokeStyle = '#2f6fed';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  let started = false;
+  days.forEach((d, i) => {
+    if (!map[d]) return;
+    const px = x(i), py = y(map[d].strands);
+    if (!started) { ctx.moveTo(px, py); started = true; }
+    else ctx.lineTo(px, py);
+  });
+  ctx.stroke();
+
+  // 数据点
+  days.forEach((d, i) => {
+    if (!map[d]) return;
+    const px = x(i), py = y(map[d].strands);
+    ctx.fillStyle = map[d].wash ? '#d93025' : '#2f6fed';
+    ctx.beginPath();
+    ctx.arc(px, py, 3, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // X 轴日期
+  ctx.fillStyle = '#999';
+  ctx.font = '10px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  const step = Math.ceil(days.length / 6);
+  days.forEach((d, i) => {
+    if (i % step !== 0 && i !== days.length - 1) return;
+    ctx.fillText(d.slice(5), x(i), h - 6);
+  });
+}
+
+function exportCSV() {
+  const records = loadRecords();
+  if (!records.length) { alert('还没有记录可导出'); return; }
+  const header = '日期,掉发量,单位,结果,洗头日\n';
+  const rows = records.map(r =>
+    `${r.date},"${r.display}","${r.display.includes('克') ? '克' : '根'}","${r.badge}",${r.wash ? '是' : '否'}`
+  ).join('\n');
+  const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `发量日记_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+let reminderTimer = null;
+function toggleReminder(on) {
+  if (!('Notification' in window)) {
+    alert('当前浏览器不支持通知');
+    document.getElementById('reminderToggle').checked = false;
+    return;
+  }
+  if (!on) {
+    if (reminderTimer) clearInterval(reminderTimer);
+    reminderTimer = null;
+    return;
+  }
+  Notification.requestPermission().then(p => {
+    if (p !== 'granted') {
+      alert('未获得通知权限，无法开启提醒');
+      document.getElementById('reminderToggle').checked = false;
+      return;
+    }
+    scheduleReminder();
+  });
+}
+
+function scheduleReminder() {
+  if (reminderTimer) clearInterval(reminderTimer);
+  reminderTimer = setInterval(() => {
+    const now = new Date();
+    if (now.getHours() === 21 && now.getMinutes() === 0) {
+      const records = loadRecords();
+      const today = now.toISOString().slice(0, 10);
+      if (!records.find(r => r.date === today)) {
+        new Notification('发量日记', { body: '今天还没记录掉发量，花 10 秒记一下吧。' });
+      }
+    }
+  }, 60 * 1000);
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+
+window.addEventListener('resize', renderChart);
+
+renderHistory();
+renderChart();
+</script>
+</body>
+</html>
