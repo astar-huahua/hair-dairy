@@ -1,0 +1,13 @@
+{
+  "name": "发量日记",
+  "short_name": "发量日记",
+  "description": "记录每天掉发量，对照平均范围看趋势",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f6f7fb",
+  "theme_color": "#2f6fed",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
